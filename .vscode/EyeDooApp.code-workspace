@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "path": "..",
+    },
+  ],
+  "settings": {
+    "workbench.colorTheme": "Default Dark+",
+    "workbench.iconTheme": "material-icon-theme",
+    "terminal.integrated.fontSize": 14,
+    "explorer.compactFolders": false,
+    "path-intellisense.showHiddenFiles": true,
+    "editor.minimap.autohide": false,
+    "references.preferredLocation": "view",
+  },
+}

@@ -1,7 +1,7 @@
 {
   "name": "eye-doo-app",
-  "version": "1.0.0",
-  "main": "index.ts",
+  "version": "1.1.0",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "expo": "~54.0.20",
+    "expo-router": "~6.0.13",
     "expo-status-bar": "~3.0.8",
     "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-native": "0.81.5"
   },
   "devDependencies": {

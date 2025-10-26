@@ -1,0 +1,29 @@
+{
+    // Editor Look and Feel
+    "workbench.colorTheme": "Default Dark+", // Or your preferred theme
+    "workbench.iconTheme": "material-icon-theme",
+    "editor.fontFamily": "Cascadia Code, Fira Code, Operator Mono, Consolas, 'Courier New', monospace",
+    "editor.fontLigatures": true,
+    "editor.fontSize": 14,
+    "terminal.integrated.fontSize": 14,
+  
+    // Formatting and Linting (Crucial for consistency)
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "eslint.format.enable": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    // Other useful settings
+    "files.autoSave": "onFocusChange",
+    "editor.minimap.enabled": true,
+    "explorer.compactFolders": false,
+    "editor.wordWrap": "on",
+    "editor.tabSize": 2,
+  
+    // For Tailwind CSS IntelliSense
+    "editor.quickSuggestions": {
+      "strings": true
+    }
+  }
+  
