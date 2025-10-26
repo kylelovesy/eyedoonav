@@ -4,13 +4,21 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     },
-    "moduleResolution": "bundler", // 👈 fix customConditions error
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowJs": true,
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"]
+  "include": [
+    "src/app/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }
