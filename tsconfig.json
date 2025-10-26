@@ -1,20 +1,16 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
-    "jsx": "react-jsx",
     "strict": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     },
-    "moduleResolution": "node",
+    "moduleResolution": "bundler", // 👈 fix customConditions error
     "esModuleInterop": true,
-    "allowJs": false,
-    "skipLibCheck": true,
+    "allowJs": true,
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["app", "src", "babel.config.js", "metro.config.js"]
+  "include": ["app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"]
 }
