@@ -1,0 +1,211 @@
+---
+alwaysApply: true
+---
+
+## Project Standards & Patterns
+
+### Core Principles
+
+1. **Ports & Adapters Architecture**: All data access through repository interfaces
+2. **Result Pattern**: All async operations return `Result<T, AppError>` (never throw)
+3. **Unidirectional Data Flow**: Component → Hook → Service → Repository → Firestore
+4. **Explicit over Implicit**: Always sanitize, validate, and handle errors explicitly
+5. **Type Safety**: Leverage TypeScript, use Zod for runtime validation
+6. **Consistency**: Follow established patterns exactly across all modules
+
+---
+
+## TypeScript Standards
+
+### Strict Type Safety
+
+```typescript
+// ✅ CORRECT - No 'any' types
+function processData(data: User): Result<ProcessedData, AppError> {
+  // Fully typed
+}
+
+// ❌ WRONG - Using 'any'
+function processData(data: any): any {
+  // No type safety
+}
+```
+
+### Prefer Interfaces for Objects
+
+```typescript
+// ✅ CORRECT
+interface User {
+  id: string;
+  name: string;
+}
+
+// ✅ ALSO CORRECT - For unions
+type Status = 'pending' | 'active' | 'inactive';
+```
+
+---
+
+## Documentation Standards
+
+### Always Add JSDoc for Public APIs
+
+````typescript
+// ✅ CORRECT
+/**
+ * Signs up a new user and creates their profile
+ *
+ * @param payload - User sign-up information
+ * @returns Result containing the created user or an error
+ *
+ * @example
+ * ```typescript
+ * const result = await authService.signUp({
+ *   email: 'john@example.com',
+ *   password: 'securepassword',
+ *   displayName: 'John Doe',
+ *   subscriptionPlan: SubscriptionPlan.PRO,
+ *   acceptTerms: true,
+ *   acceptPrivacy: true,
+ * });
+ *
+ * if (result.success) {
+ *   console.log('User created:', result.value);
+ * }
+ * ```
+ */
+async signUp(payload: SignUpInput): Promise<Result<User, AppError>> {
+  // Implementation
+}
+
+// ❌ WRONG - No documentation
+async signUp(payload: SignUpInput): Promise<Result<User, AppError>> {
+  // Implementation
+}
+````
+
+---
+
+## Import Standards
+
+### Import Order
+
+```typescript
+// ✅ CORRECT - Organized imports
+// 1. React/React Native
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+
+// 2. Third-party libraries
+import { useRouter } from 'expo-router';
+import { create } from 'zustand';
+
+// 3. Domain/types
+import { User, SignUpInput } from '@/domain/user/user.schema';
+import { AppError, ErrorCode } from '@/domain/common/errors';
+
+// 4. Services
+import { AuthService } from '@/services/ServiceFactory';
+
+// 5. Hooks
+import { useSignUp } from '@/hooks/use-sign-up';
+import { useErrorHandler } from '@/hooks/use-error-handler';
+
+// 6. Components
+import { ScreenWrapper } from '@/components/common/ScreenWrapper';
+import { SignUpForm } from '@/components/auth/SignUpForm';
+
+// 7. Utils
+import { ErrorContextBuilder } from '@/utils/error-context-builder';
+import { sanitizeEmail } from '@/utils/sanitization-helpers';
+
+// 8. Styles
+import { styles } from './styles';
+```
+
+### Use Path Aliases
+
+```typescript
+// ✅ CORRECT - Use @ alias
+import { AuthService } from '@/services/ServiceFactory';
+import { User } from '@/domain/user/user.schema';
+
+// ❌ WRONG - Relative paths
+import { AuthService } from '../../../services/ServiceFactory';
+import { User } from '../../../domain/user/user.schema';
+```
+
+---
+
+## Performance Standards
+
+### Avoid Unnecessary Re-renders
+
+```typescript
+// ✅ CORRECT - Memoize callbacks
+const handleSubmit = useCallback(async () => {
+  // Implementation
+}, [dependencies]);
+
+// ✅ CORRECT - Memoize expensive computations
+const processedData = useMemo(() => {
+  return expensiveOperation(data);
+}, [data]);
+
+// ❌ WRONG - Inline functions causing re-renders
+<TouchableOpacity onPress={() => handleSubmit()}>
+```
+
+### Limit Real-time Subscriptions
+
+```typescript
+// ✅ CORRECT - Only use when necessary
+const useUserProfile = (userId: string, options: { enableRealtime?: boolean } = {}) => {
+  // Only subscribe if explicitly enabled
+  if (options.enableRealtime) {
+    // Set up subscription
+  } else {
+    // Use fetch
+  }
+};
+
+// ❌ WRONG - Always subscribe
+const useUserProfile = (userId: string) => {
+  // Always subscribes, even when not needed
+  useEffect(() => {
+    const unsubscribe = onSnapshot(docRef, callback);
+    return unsubscribe;
+  }, [userId]);
+};
+```
+
+---
+
+## Security Standards
+
+### Never Expose Sensitive Data
+
+```typescript
+// ✅ CORRECT - Filter sensitive fields
+const publicProfile = {
+  id: user.id,
+  displayName: user.displayName,
+  // Don't expose email, phone, etc.
+};
+
+// ❌ WRONG - Expose everything
+const publicProfile = user;
+```
+
+### Validate on Server (Cloud Functions)
+
+```typescript
+// ✅ CORRECT - Server-side validation
+export const onUserCreate = functions.auth.user().onCreate(async user => {
+  // Ensure user document exists within 30 seconds
+  // Cleanup orphaned auth accounts
+});
+
+// ❌ WRONG - Client-side only
+// Relying solely on client validation and cleanup
+```

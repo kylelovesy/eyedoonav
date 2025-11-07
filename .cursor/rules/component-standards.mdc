@@ -1,0 +1,116 @@
+---
+alwaysApply: true
+---
+
+### Screen Component Template
+
+```typescript
+// ✅ CORRECT - Use ScreenWrapper
+import { ScreenWrapper } from '@/components/common/ScreenWrapper';
+
+export default function FeatureScreen() {
+  const router = useRouter();
+  const { data, loading, error, performAction, clearError } = useFeature();
+
+  return (
+    <ScreenWrapper
+      loading={loading}
+      error={error}
+      onRetry={clearError}
+      scrollable={true}
+      testID="feature-screen"
+    >
+      <FeatureForm onSubmit={performAction} loading={loading} />
+    </ScreenWrapper>
+  );
+}
+
+// ❌ WRONG - Manual loading/error handling
+export default function FeatureScreen() {
+  const { data, loading, error } = useFeature();
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+
+  return <FeatureForm />;
+}
+```
+
+### Form Component Template
+
+```typescript
+// ✅ CORRECT - Validated form with client-side validation
+import { useState } from 'react';
+
+interface FeatureFormProps {
+  onSubmit: (input: Input) => Promise<boolean>;
+  loading?: boolean;
+}
+
+export const FeatureForm: React.FC<FeatureFormProps> = ({ onSubmit, loading = false }) => {
+  const [formData, setFormData] = useState<Input>(initialValues);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const handleChange = (field: keyof Input, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Clear field error on change
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleBlur = (field: keyof Input) => {
+    const error = validateField(field, formData[field]);
+    if (error) {
+      setFieldErrors(prev => ({ ...prev, [field]: error }));
+    }
+  };
+
+  const handleSubmit = async () => {
+    // Validate all fields
+    const result = inputSchema.safeParse(formData);
+
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach(err => {
+        if (err.path[0]) {
+          errors[err.path[0].toString()] = err.message;
+        }
+      });
+      setFieldErrors(errors);
+      return;
+    }
+
+    // Submit
+    const success = await onSubmit(result.data);
+
+    if (success) {
+      // Clear form
+      setFormData(initialValues);
+      setFieldErrors({});
+    }
+  };
+
+  return (
+    <View>
+      {/* Form fields with error display */}
+      <TextInput
+        value={formData.field}
+        onChangeText={(value) => handleChange('field', value)}
+        onBlur={() => handleBlur('field')}
+        editable={!loading}
+      />
+      {fieldErrors.field && <Text style={styles.error}>{fieldErrors.field}</Text>}
+
+      <TouchableOpacity onPress={handleSubmit} disabled={loading}>
+        <Text>{loading ? 'Submitting...' : 'Submit'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+```

@@ -1,0 +1,19 @@
+---
+alwaysApply: true
+---
+
+### When to Use What
+
+```typescript
+// ✅ Component State - Use for UI-only state
+const [isExpanded, setIsExpanded] = useState(false);
+
+// ✅ Hook State - Use for feature-specific data with loading/error
+const { user, loading, error } = useAuth();
+
+// ✅ Zustand Store - Use for global state shared across screens
+const user = useAuthStore(state => state.user);
+
+// ❌ WRONG - Zustand for component-only state
+const isExpanded = useUIStore(state => state.isExpanded);
+```

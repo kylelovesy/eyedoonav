@@ -1,0 +1,39 @@
+---
+alwaysApply: true
+---
+
+### Use LoadingState Type
+
+```typescript
+// ✅ CORRECT
+import { LoadingState, loading, success, error, getCurrentData } from '@/utils/loading-state';
+
+const [state, setState] = useState<LoadingState<User | null>>(loading());
+
+// Update state
+setState(loading(getCurrentData(state)));
+setState(success(user));
+setState(error(appError, getCurrentData(state)));
+
+// ❌ WRONG - Separate boolean flags
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState<Error | null>(null);
+const [data, setData] = useState<User | null>(null);
+```
+
+### Multi-Stage Operations
+
+```typescript
+// ✅ CORRECT - Show progress for multi-step operations
+setState(loadingWithProgress(undefined, false, 'validating', 10));
+setState(loadingWithProgress(undefined, false, 'creating', 50));
+setState(loadingWithProgress(undefined, false, 'initializing', 80));
+setState(success(result));
+
+// ❌ WRONG - Generic loading with no feedback
+setState(loading());
+// ... long operation with no progress updates
+setState(success(result));
+```
+
+---

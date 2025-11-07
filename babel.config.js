@@ -1,17 +1,21 @@
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: ['babel-preset-expo'],
+    presets: [
+      'babel-preset-expo',
+      // ['@babel/preset-env', { targets: { node: 'current' } }],
+      // '@babel/preset-typescript',
+    ],
     plugins: [
-      'react-native-reanimated/plugin', // 👈 required for Reanimated
       [
         'module-resolver',
         {
           alias: {
-            '@': './src', // 👈 path alias support
+            '@': './src',
           },
         },
       ],
+      'react-native-reanimated/plugin',
     ],
   };
 };

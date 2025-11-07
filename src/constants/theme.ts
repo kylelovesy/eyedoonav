@@ -1,15 +1,11 @@
-/*--------------------------------------------------------------------------------
-  @file      theme.ts
-  @author    Kyle Lovesy
-  @date      2025-10-25
-  @version   1.0.0
-  @description Theme for the app using React Native Paper
---------------------------------------------------------------------------------*/
+/*---------------------------------------
+File: src/constants/theme.ts
+Description: Theme configuration for the application.
+Author: Kyle Lovesy
+Date: 26/10-2025 - 22.15
+Version: 1.1.0
+---------------------------------------*/
 import { MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
-
-// =================================================================================
-// MARK: - Color Palette
-// =================================================================================
 
 const lightThemeColors = {
   primary: '#4A90E2',
@@ -118,10 +114,6 @@ const darkThemeColors = {
   backdrop: 'rgba(44, 49, 55, 0.4)',
   overlay: 'rgba(0, 0, 0, 0.5)',
 };
-
-// =================================================================================
-// MARK: - Theme Objects
-// =================================================================================
 
 export const AppLightTheme = {
   ...MD3LightTheme,

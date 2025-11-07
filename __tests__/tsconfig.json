@@ -1,0 +1,10 @@
+// (This file will be created for you)
+{
+  // Inherit all settings from your main tsconfig.json
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "@testing-library/jest-native"]
+  },
+  // Explicitly include all test files
+  "include": ["**/*.spec.ts", "**/*.spec.tsx", "../jest.setup.js"]
+}

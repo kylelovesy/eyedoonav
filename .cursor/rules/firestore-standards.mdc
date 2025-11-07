@@ -1,0 +1,124 @@
+---
+alwaysApply: true
+---
+
+### Document Structure
+
+```typescript
+// ✅ CORRECT - Flat structure with nested objects where logical
+{
+  id: string,
+  userId: string,
+  name: { firstName: string, lastName: string },
+  email: string,
+  preferences: { /* nested object */ },
+  subscription: { /* nested object */ },
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+}
+
+// ❌ WRONG - Over-nested or too flat
+{
+  user: {
+    data: {
+      info: {
+        personal: {
+          name: { /* too nested */ }
+        }
+      }
+    }
+  }
+}
+```
+
+### Use Timestamps Correctly
+
+```typescript
+// ✅ CORRECT - Server timestamps for audit fields
+await updateDoc(docRef, {
+  ...updates,
+  updatedAt: serverTimestamp(),
+});
+
+// ❌ WRONG - Client timestamps
+await updateDoc(docRef, {
+  ...updates,
+  updatedAt: new Date(),
+});
+```
+
+### Batch Writes for Related Operations
+
+```typescript
+// ✅ CORRECT - Use batch for multiple related writes
+const batch = writeBatch(firestore);
+
+batch.set(doc1Ref, data1);
+batch.update(doc2Ref, data2);
+batch.delete(doc3Ref);
+
+await batch.commit();
+
+// ❌ WRONG - Multiple individual writes
+await setDoc(doc1Ref, data1);
+await updateDoc(doc2Ref, data2);
+await deleteDoc(doc3Ref);
+```
+
+### Subcollection Paths
+
+```typescript
+// ✅ CORRECT - Type-safe path building
+const getTimelineDocRef = (projectId: string) => {
+  return doc(firestore, 'projects', projectId, 'timeline', 'data');
+};
+
+// ✅ CORRECT - Use helper for user paths
+const getUserListPath = (userId: string, listType: string) => {
+  return ['users', userId, 'lists', listType] as const;
+};
+
+// ❌ WRONG - String concatenation
+const path = `projects/${projectId}/timeline/data`;
+```
+
+## Rate Limiting
+
+### Always Rate Limit Auth Operations
+
+```typescript
+// ✅ CORRECT - Use rate limiter
+import { signInRateLimiter } from '@/utils/rate-limiter';
+
+async signIn(payload: SignInInput): Promise<Result<User, AppError>> {
+  const rateLimitKey = `signin-${payload.email.toLowerCase()}`;
+
+  if (!signInRateLimiter.canAttempt(rateLimitKey)) {
+    const timeUntilUnblocked = signInRateLimiter.getTimeUntilUnblocked(rateLimitKey);
+    const minutesRemaining = Math.ceil(timeUntilUnblocked / 60000);
+
+    return err(ErrorMapper.createGenericError(
+      ErrorCode.AUTH_TOO_MANY_REQUESTS,
+      'Too many attempts',
+      `Too many sign-in attempts. Try again in ${minutesRemaining} minutes.`,
+      context,
+      undefined,
+      false
+    ));
+  }
+
+  const result = await this.repository.signIn(payload);
+
+  // Reset on success
+  if (result.success) {
+    signInRateLimiter.reset(rateLimitKey);
+  }
+
+  return result;
+}
+
+// ❌ WRONG - No rate limiting
+async signIn(payload: SignInInput): Promise<Result<User, AppError>> {
+  return await this.repository.signIn(payload);
+}
+```

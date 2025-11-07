@@ -6,10 +6,7 @@
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "scheme": "eye-doo-app",
-    "experiments": {
-      "typedRoutes": true
-    },
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./src/assets/splash-icon.png",
@@ -33,6 +30,18 @@
     "plugins": [
       "expo-router",
       [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F8F9FA",
+          "image": "./src/assets/splash-icon.png",
+          "dark": {
+            "image": "./src/assets/splash-icon.png",
+            "backgroundColor": "#121417"
+          },
+          "imageWidth": 200
+        }
+      ],
+      [
         "expo-font",
         {
           "fonts": [
@@ -50,6 +59,9 @@
       ],
       "expo-localization",
       "expo-web-browser"
-    ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

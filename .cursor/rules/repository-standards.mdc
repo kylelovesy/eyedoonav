@@ -1,0 +1,97 @@
+---
+alwaysApply: true
+---
+
+### Repository Interface (Port)
+
+```typescript
+// ✅ CORRECT - Define interface first
+export interface IAuthRepository {
+  signUp(payload: SignUpInput): Promise<Result<User, AppError>>;
+  signIn(payload: SignInInput): Promise<Result<User, AppError>>;
+  signOut(): Promise<Result<void, AppError>>;
+  getProfile(): Promise<Result<User, AppError>>;
+}
+```
+
+### Repository Implementation (Adapter)
+
+```typescript
+// ✅ CORRECT - Implement interface
+export class FirestoreAuthRepository implements IAuthRepository {
+  private readonly context = 'FirestoreAuthRepository';
+
+  async signUp(payload: SignUpInput): Promise<Result<User, AppError>> {
+    const context = ErrorContextBuilder.fromRepository(this.context, 'signUp');
+
+    try {
+      // 1. Sanitize
+      const sanitized = this.sanitizeSignUpInput(payload);
+
+      // 2. Validate (optional at repo level, already done in service)
+
+      // 3. Firestore operation
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        sanitized.email,
+        sanitized.password,
+      );
+
+      // 4. Return result
+      return ok(user);
+    } catch (error) {
+      return err(ErrorMapper.fromFirebaseAuth(error, context));
+    }
+  }
+
+  private sanitizeSignUpInput(payload: SignUpInput): SignUpInput {
+    return {
+      ...payload,
+      email: sanitizeEmail(payload.email)!,
+      displayName: sanitizeString(payload.displayName)!,
+    };
+  }
+}
+```
+
+### Never Use onSnapshot Without Cleanup
+
+```typescript
+// ✅ CORRECT - Return unsubscribe function
+subscribeToUser(
+  userId: string,
+  onData: (result: Result<User, AppError>) => void
+): () => void {
+  const docRef = doc(firestore, 'users', userId);
+
+  const unsubscribe = onSnapshot(
+    docRef,
+    (snapshot) => {
+      const result = this.parseSnapshot(snapshot, context);
+      onData(result);
+    },
+    (error) => {
+      onData(err(ErrorMapper.fromFirestore(error, context)));
+    }
+  );
+
+  return unsubscribe; // Return cleanup function
+}
+
+// ✅ CORRECT - Cleanup in hook
+useEffect(() => {
+  const unsubscribe = service.subscribeToUser(userId, handleData);
+
+  return () => {
+    unsubscribe(); // Cleanup on unmount
+  };
+}, [userId]);
+
+// ❌ WRONG - No cleanup
+subscribeToUser(userId: string, onData: (user: User) => void): void {
+  onSnapshot(doc(firestore, 'users', userId), (snapshot) => {
+    onData(snapshot.data());
+  });
+  // No return value - can't cleanup!
+}
+```

@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+
+```
+src/
+├── app/                    # Expo Router screens
+│   ├── (auth)/            # Auth screens (sign-up, sign-in, etc.)
+│   ├── (app)/             # Authenticated app screens
+│   └── _layout.tsx        # Root layout
+├── components/
+│   ├── common/            # Reusable components (ScreenWrapper, ErrorBoundary)
+│   ├── auth/              # Auth-specific components (forms)
+│   └── [feature]/         # Feature-specific components
+├── hooks/                 # React hooks
+├── services/              # Business logic layer
+├── repositories/
+│   ├── firestore/         # Firestore adapters
+│   └── i-*.ts             # Repository interfaces (ports)
+├── stores/                # Zustand stores
+├── domain/                # Schemas, types, constants
+│   ├── common/            # Shared schemas (errors, base types)
+│   └── [feature]/         # Feature-specific schemas
+├── utils/                 # Utility functions
+└── constants/             # App-wide constants
+```

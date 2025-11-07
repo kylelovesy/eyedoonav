@@ -1,0 +1,55 @@
+---
+alwaysApply: true
+---
+
+### Store Template
+
+```typescript
+// ✅ CORRECT - Base store structure
+import { create } from 'zustand';
+import { AppError } from '@/domain/common/errors';
+
+interface FeatureState {
+  data: Data | null;
+  loading: boolean;
+  error: AppError | null;
+}
+
+interface FeatureActions {
+  setData: (data: Data | null) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: AppError | null) => void;
+  reset: () => void;
+  // Async actions
+  fetchData: () => Promise<void>;
+}
+
+export type FeatureStore = FeatureState & FeatureActions;
+
+export const useFeatureStore = create<FeatureStore>((set, get) => ({
+  // State
+  data: null,
+  loading: false,
+  error: null,
+
+  // Actions
+  setData: data => set({ data, error: null }),
+  setLoading: loading => set({ loading }),
+  setError: error => set({ error, loading: false }),
+  reset: () => set({ data: null, loading: false, error: null }),
+
+  // Async actions
+  fetchData: async () => {
+    set({ loading: true });
+
+    const result = await SomeService.getData();
+
+    if (result.success) {
+      set({ data: result.value, loading: false, error: null });
+    } else {
+      set({ error: result.error, loading: false });
+      AppErrorHandler.handle(result.error, context);
+    }
+  },
+}));
+```

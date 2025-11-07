@@ -1,0 +1,471 @@
+---
+alwaysApply: true
+---
+
+## Async Operation Patterns
+
+### Service Method Pattern
+
+```typescript
+// ✅ CORRECT - Standard async service method
+async methodName(params: Params): Promise<Result<Data, AppError>> {
+  const context = ErrorContextBuilder.fromService(
+    'ServiceName',
+    'methodName',
+    userId,
+    projectId,
+    { metadata: 'values' }
+  );
+
+  // 1. Validate input (if needed)
+  const validationResult = validateWithSchema(schema, params, context);
+  if (!validationResult.success) {
+    return err(validationResult.error);
+  }
+
+  // 2. Perform business logic checks (if needed)
+  if (someBusinessRule) {
+    return err(ErrorMapper.createGenericError(
+      ErrorCode.VALIDATION_FAILED,
+      'Business rule violation',
+      'User-friendly message',
+      context
+    ));
+  }
+
+  // 3. Delegate to repository
+  return await this.repository.operation(validationResult.value);
+}
+```
+
+### Repository Method Pattern
+
+```typescript
+// ✅ CORRECT - Standard async repository method
+async methodName(params: Params): Promise<Result<Data, AppError>> {
+  const context = ErrorContextBuilder.fromRepository(
+    this.context,
+    'methodName',
+    userId,
+    projectId
+  );
+
+  try {
+    // 1. Sanitize input
+    const sanitized = this.sanitizeInput(params);
+
+    // 2. Validate (optional at repo level)
+    const validationResult = validateWithSchema(schema, sanitized, context);
+    if (!validationResult.success) {
+      return err(validationResult.error);
+    }
+
+    // 3. Firestore operation
+    const docRef = doc(firestore, 'collection', id);
+    await setDoc(docRef, this.toFirestoreDoc(validationResult.value));
+
+    // 4. Fetch result (if needed)
+    const snapshot = await getDoc(docRef);
+    return this.parseSnapshot(snapshot, context);
+  } catch (error) {
+    return err(ErrorMapper.fromFirestore(error, context));
+  }
+}
+```
+
+---
+
+## Default Values Pattern
+
+### Always Define Defaults
+
+```typescript
+// ✅ CORRECT - Centralized defaults
+// domain/user/user-defaults.ts
+export const defaultUserPreferences: UserPreferences = {
+  id: '', // Set during creation
+  userId: '', // Set during creation
+  notifications: true,
+  darkMode: false,
+  language: LanguageOption.ENGLISH,
+  weatherUnits: WeatherUnit.METRIC,
+  weekStartsOn: 1,
+  marketingConsent: false,
+  timezone: 'UTC',
+  dateFormat: 'DD/MM/YYYY',
+  timeFormat: '24h',
+};
+
+// Use in repository
+async create(payload: UserCreate): Promise<Result<User, AppError>> {
+  const userData = {
+    ...payload,
+    preferences: {
+      ...defaultUserPreferences,
+      id: userId,
+      userId: userId,
+      marketingConsent: payload.preferences?.marketingConsent || false,
+    },
+  };
+
+  // Save
+}
+
+// ❌ WRONG - No defaults, missing fields
+async create(payload: UserCreate): Promise<Result<User, AppError>> {
+  await setDoc(docRef, payload); // Missing required fields!
+}
+```
+
+---
+
+## Orchestration Pattern
+
+### Multi-Repository Operations
+
+```typescript
+// ✅ CORRECT - Service orchestrates multiple repositories
+async createProject(
+  userId: string,
+  input: ProjectInput
+): Promise<Result<Project, AppError>> {
+  const context = ErrorContextBuilder.fromService(
+    'ProjectService',
+    'createProject',
+    userId
+  );
+
+  // 1. Create project document
+  const projectResult = await this.projectRepository.create(userId, input);
+  if (!projectResult.success) {
+    return err(projectResult.error);
+  }
+
+  const projectId = projectResult.value.id;
+
+  // 2. Initialize subcollections in parallel
+  const results = await Promise.all([
+    this.initializeKitList(userId, projectId),
+    this.initializeTaskList(userId, projectId),
+    this.initializeTimeline(projectId),
+    this.initializeLocations(projectId),
+  ]);
+
+  // 3. Collect failures
+  const failures = results.filter(r => !r.success);
+
+  if (failures.length > 0) {
+    // Return aggregated error (project still created)
+    return err(ErrorMapper.createAggregatedError(
+      ErrorCode.DB_WRITE_ERROR,
+      `Failed to initialize ${failures.length} subcollection(s)`,
+      'Project created but some features may not be available.',
+      context,
+      failures.map((f, i) => ({
+        operation: ['kit', 'task', 'timeline', 'locations'][i],
+        error: f.error,
+      })),
+      results.length - failures.length
+    ));
+  }
+
+  return ok(projectResult.value);
+}
+
+private async initializeKitList(
+  userId: string,
+  projectId: string
+): Promise<Result<void, AppError>> {
+  // Try user list first
+  const userListResult = await this.kitRepository.getUserList(userId);
+
+  if (userListResult.success) {
+    return await this.kitRepository.createOrResetProjectList(
+      userId,
+      projectId,
+      userListResult.value
+    );
+  }
+
+  // Fallback to master list
+  const masterResult = await this.kitRepository.getMaster();
+
+  if (masterResult.success) {
+    return await this.kitRepository.createOrResetProjectList(
+      userId,
+      projectId,
+      masterResult.value
+    );
+  }
+
+  return err(masterResult.error);
+}
+```
+
+---
+
+## Finalization Guard Pattern
+
+### Prevent Edits to Finalized Data
+
+```typescript
+// ✅ CORRECT - Guard at service level
+async updateTimeline(
+  projectId: string,
+  updates: TimelineUpdate
+): Promise<Result<void, AppError>> {
+  const context = ErrorContextBuilder.fromService(
+    'TimelineService',
+    'updateTimeline',
+    undefined,
+    projectId
+  );
+
+  // Get current timeline
+  const timelineResult = await this.repository.get(projectId);
+  if (!timelineResult.success) {
+    return err(timelineResult.error);
+  }
+
+  // Check finalization
+  if (timelineResult.value.config.finalized) {
+    return err(ErrorMapper.createGenericError(
+      ErrorCode.VALIDATION_FAILED,
+      'Timeline finalized',
+      'Timeline is finalized and cannot be edited.',
+      context,
+      undefined,
+      false
+    ));
+  }
+
+  // Continue with update
+  return await this.repository.update(projectId, updates);
+}
+
+// ❌ WRONG - No finalization check
+async updateTimeline(
+  projectId: string,
+  updates: TimelineUpdate
+): Promise<Result<void, AppError>> {
+  return await this.repository.update(projectId, updates);
+}
+```
+
+---
+
+## Time-Based Validation Pattern
+
+### Validate Event Timing
+
+```typescript
+// ✅ CORRECT - Comprehensive time validation
+private validateEventTiming(
+  newEvent: TimelineEvent,
+  existingEvents: TimelineEvent[]
+): Result<void, AppError> {
+  const context = ErrorContextBuilder.fromService(
+    'TimelineService',
+    'validateEventTiming'
+  );
+
+  // Calculate time window for new event
+  const newWindow = this.calculateEventWindow(newEvent);
+
+  for (const existing of existingEvents) {
+    // Skip self
+    if (existing.id === newEvent.id) continue;
+
+    const existingWindow = this.calculateEventWindow(existing);
+
+    // Check for overlap
+    if (
+      newWindow.start < existingWindow.end &&
+      newWindow.end > existingWindow.start
+    ) {
+      return err(ErrorMapper.createGenericError(
+        ErrorCode.VALIDATION_FAILED,
+        'Event overlap',
+        `This event overlaps with "${existing.itemName}". Please adjust the timing.`,
+        context,
+        undefined,
+        false
+      ));
+    }
+
+    // Check buffer time (skip for point-in-time events)
+    if (!newWindow.isPointInTime && !existingWindow.isPointInTime) {
+      const gap = this.calculateGapBetweenEvents(newWindow, existingWindow);
+
+      if (gap >= 0 && gap < MIN_BUFFER_TIME_MINUTES) {
+        return err(ErrorMapper.createGenericError(
+          ErrorCode.VALIDATION_FAILED,
+          'Insufficient buffer time',
+          `Events should have at least ${MIN_BUFFER_TIME_MINUTES} minutes between them.`,
+          context,
+          undefined,
+          false
+        ));
+      }
+    }
+  }
+
+  return ok(undefined);
+}
+
+private calculateEventWindow(event: TimelineEvent): EventTimeWindow {
+  const start = event.startTime || new Date();
+  let end: Date;
+  let isPointInTime = false;
+
+  if (event.endTime) {
+    end = event.endTime;
+  } else if (event.duration && event.duration > 0) {
+    end = addMinutes(start, event.duration);
+  } else {
+    // Point-in-time event (assume 1 hour)
+    isPointInTime = true;
+    end = addHours(start, 1);
+  }
+
+  return { start, end, isPointInTime };
+}
+```
+
+---
+
+## UUID vs Firestore ID Pattern
+
+### When to Use Each
+
+```typescript
+// ✅ CORRECT - UUID for array items (Timeline, Lists)
+// Items stored in array within document
+const eventId = generateUUID();
+const event: TimelineEvent = {
+  id: eventId, // UUID
+  type: TimelineEventType.CEREMONY,
+  // ...
+};
+
+// Save to Firestore
+await updateDoc(docRef, {
+  items: [...currentItems, event],
+});
+
+// ✅ CORRECT - Firestore ID for documents (Projects, Users)
+// Items stored as separate documents
+const docRef = await addDoc(collection(firestore, 'projects'), projectData);
+const projectId = docRef.id; // Firestore-generated ID
+
+// ❌ WRONG - UUID for top-level documents
+const projectId = generateUUID();
+await setDoc(doc(firestore, 'projects', projectId), projectData);
+// Makes it harder to query and reference
+```
+
+---
+
+## Retry Strategy Pattern
+
+### Use Recovery Helpers
+
+```typescript
+// ✅ CORRECT - Use withRetry for retryable operations
+import { withRetry } from '@/utils/error-recovery';
+
+async syncData(): Promise<Result<void, AppError>> {
+  return await withRetry(
+    async () => {
+      const result = await this.repository.sync();
+      return result;
+    },
+    {
+      maxAttempts: 3,
+      delayMs: 1000,
+      exponential: true,
+    }
+  );
+}
+
+// ✅ CORRECT - Manual retry for specific errors
+async fetchData(): Promise<Result<Data, AppError>> {
+  let lastError: AppError | null = null;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const result = await this.repository.fetch();
+
+    if (result.success) {
+      return result;
+    }
+
+    // Only retry if error is retryable
+    if (!result.error.retryable) {
+      return result;
+    }
+
+    lastError = result.error;
+
+    if (attempt < 3) {
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+
+  return err(lastError!);
+}
+```
+
+---
+
+## Caching Pattern
+
+### Repository-Level Caching
+
+```typescript
+// ✅ CORRECT - Cache at repository level
+export class CachedFirestoreUserRepository implements IUserRepository {
+  private cache = new Map<string, { user: User; timestamp: number }>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  constructor(private repository: FirestoreUserRepository) {}
+
+  async getById(userId: string): Promise<Result<User, AppError>> {
+    const now = Date.now();
+    const cached = this.cache.get(userId);
+
+    // Return cached if valid
+    if (cached && now - cached.timestamp < this.CACHE_TTL) {
+      return ok(cached.user);
+    }
+
+    // Fetch from repository
+    const result = await this.repository.getById(userId);
+
+    // Cache on success
+    if (result.success) {
+      this.cache.set(userId, {
+        user: result.value,
+        timestamp: now,
+      });
+    }
+
+    return result;
+  }
+
+  // Invalidate cache on updates
+  async updateProfile(userId: string, payload: UserUpdate): Promise<Result<void, AppError>> {
+    const result = await this.repository.updateProfile(userId, payload);
+
+    if (result.success) {
+      this.cache.delete(userId); // Invalidate
+    }
+
+    return result;
+  }
+}
+
+// Use in ServiceFactory
+const userRepository = new FirestoreUserRepository();
+const cachedUserRepository = new CachedFirestoreUserRepository(userRepository);
+const userService = new UserService(cachedUserRepository);
+```

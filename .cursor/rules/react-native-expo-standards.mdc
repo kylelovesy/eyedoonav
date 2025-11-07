@@ -1,0 +1,61 @@
+---
+alwaysApply: true
+---
+
+### Navigation
+
+```typescript
+// ✅ CORRECT - Use Expo Router
+import { useRouter } from 'expo-router';
+
+const router = useRouter();
+router.push('/(app)/profile');
+router.replace('/(auth)/sign-in');
+
+// ❌ WRONG - React Navigation v5 style
+navigation.navigate('Profile');
+```
+
+### Styling
+
+```typescript
+// ✅ CORRECT - StyleSheet.create
+import { StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+});
+
+// ❌ WRONG - Inline styles
+<View style={{ flex: 1, padding: 20 }}>
+```
+
+### Platform-Specific Code
+
+```typescript
+// ✅ CORRECT - Use Platform API
+import { Platform } from 'react-native';
+
+const styles = StyleSheet.create({
+  shadow: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+});
+```

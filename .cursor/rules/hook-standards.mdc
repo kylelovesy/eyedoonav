@@ -1,0 +1,116 @@
+---
+alwaysApply: true
+---
+
+### Hook Structure Template
+
+```typescript
+// ✅ CORRECT - Follow this pattern exactly
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { LoadingState, loading, success, error as errorState, idle } from '@/utils/loading-state';
+import { useErrorHandler } from './use-error-handler';
+import { ErrorContextBuilder } from '@/utils/error-context-builder';
+
+interface UseFeatureOptions {
+  autoFetch?: boolean;
+  onSuccess?: (data: Data) => void;
+  onError?: (error: AppError) => void;
+}
+
+interface UseFeatureResult {
+  data: Data | null;
+  loading: boolean;
+  error: AppError | null;
+  state: LoadingState<Data | null>;
+  performAction: (input: Input) => Promise<boolean>;
+  refresh: () => Promise<void>;
+  clearError: () => void;
+}
+
+export function useFeature(params: Params, options: UseFeatureOptions = {}): UseFeatureResult {
+  const [state, setState] = useState<LoadingState<Data | null>>(idle());
+  const { handleError } = useErrorHandler();
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const performAction = useCallback(
+    async (input: Input): Promise<boolean> => {
+      setState(loading());
+
+      const result = await SomeService.someMethod(input);
+
+      if (!isMountedRef.current) return false;
+
+      if (result.success) {
+        setState(success(result.value));
+        options.onSuccess?.(result.value);
+        return true;
+      } else {
+        setState(errorState(result.error));
+        handleError(result.error, ErrorContextBuilder.fromHook('useFeature', 'performAction'));
+        options.onError?.(result.error);
+        return false;
+      }
+    },
+    [handleError, options],
+  );
+
+  const refresh = useCallback(() => {
+    // Re-fetch logic
+  }, []);
+
+  const clearError = useCallback(() => {
+    if (state.status === 'error') {
+      setState(success(state.data || null));
+    }
+  }, [state]);
+
+  return {
+    data: state.status === 'success' ? state.data : null,
+    loading: state.status === 'loading',
+    error: state.status === 'error' ? state.error : null,
+    state,
+    performAction,
+    refresh,
+    clearError,
+  };
+}
+```
+
+### Optimistic Updates
+
+```typescript
+// ✅ CORRECT - Use useOptimisticUpdate hook
+const updateProfile = useOptimisticUpdate(currentProfile, setProfile, {
+  operation: async optimistic => {
+    return await UserService.updateUserProfile(userId, optimistic);
+  },
+  onSuccess: final => {
+    showToast({ type: 'success', message: 'Profile updated' });
+  },
+  onError: (error, rollback) => {
+    handleError(error, context);
+  },
+});
+
+// Use it
+await updateProfile({ displayName: 'New Name' });
+
+// ❌ WRONG - Manual optimistic update logic scattered
+const updateProfile = async updates => {
+  const previous = profile;
+  setProfile({ ...profile, ...updates });
+
+  const result = await service.update(updates);
+
+  if (!result.success) {
+    setProfile(previous);
+  }
+};
+```

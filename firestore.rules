@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns a document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is photographer for a project
+    function isPhotographer(userId, projectId) {
+      return exists(/databases/$(database)/documents/projects/$(projectId)) &&
+             get(/databases/$(database)/documents/projects/$(projectId)).data.photographerId == userId;
+    }
+
+    // Check if user is client for a project
+    function isClient(userId, projectId) {
+      return exists(/databases/$(database)/documents/projects/$(projectId)) &&
+             get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == userId;
+    }
+
+    // Check if user has access to a project (either photographer or client)
+    function hasProjectAccess(userId, projectId) {
+      return isPhotographer(userId, projectId) || isClient(userId, projectId);
+    }
+
+    // ============================================================================
+    // USERS COLLECTION
+    // ============================================================================
+
+    // User profile data - only owner can access
+    match /users/{userId}/profile/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User preferences - only owner can access
+    match /users/{userId}/preferences/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User customizations - only owner can access
+    match /users/{userId}/customizations/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User subscription - only owner can access
+    match /users/{userId}/subscription/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User setup data - only owner can access
+    match /users/{userId}/setup/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User projects list - only owner can access
+    match /users/{userId}/projects/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User lists (global scope) - only owner can access
+    match /users/{userId}/lists/{listType} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User vendors data - only owner can access
+    match /users/{userId}/vendors/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ============================================================================
+    // PROJECTS COLLECTION
+    // ============================================================================
+
+    // Project documents - photographer and client can read, only photographer can write
+    match /projects/{projectId} {
+      allow read: if hasProjectAccess(request.auth.uid, projectId);
+      allow create: if isAuthenticated() && request.auth.uid == resource.data.photographerId;
+      allow update: if isPhotographer(request.auth.uid, projectId);
+      allow delete: if isPhotographer(request.auth.uid, projectId);
+    }
+
+    // Project lists - both photographer and client can read/write for collaboration
+    match /projects/{projectId}/lists/{listType} {
+      allow read, write: if hasProjectAccess(request.auth.uid, projectId);
+    }
+
+    // Project locations - both photographer and client can read/write
+    match /projects/{projectId}/locations/{document=**} {
+      allow read, write: if hasProjectAccess(request.auth.uid, projectId);
+    }
+
+    // Project timeline - both photographer and client can read/write
+    match /projects/{projectId}/timeline/{document=**} {
+      allow read, write: if hasProjectAccess(request.auth.uid, projectId);
+    }
+
+    // Project vendors - both photographer and client can read/write
+    match /projects/{projectId}/vendors/{document=**} {
+      allow read, write: if hasProjectAccess(request.auth.uid, projectId);
+    }
+
+    // ============================================================================
+    // MASTER DATA COLLECTION
+    // ============================================================================
+
+    // Master lists - authenticated users can read, only system can write
+    match /masterData/{listType} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only system functions can write master data
+    }
+
+    // ============================================================================
+    // AUTHENTICATION REQUIRED FOR ALL OPERATIONS
+    // ============================================================================
+
+    // Deny all operations for unauthenticated users
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

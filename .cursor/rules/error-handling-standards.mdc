@@ -1,0 +1,82 @@
+---
+alwaysApply: true
+---
+
+### Always Use Result Pattern
+
+```typescript
+// ✅ CORRECT
+async function someOperation(): Promise<Result<Data, AppError>> {
+  try {
+    const data = await fetchData();
+    return ok(data);
+  } catch (error) {
+    return err(ErrorMapper.fromFirestore(error, context));
+  }
+}
+
+// ❌ WRONG - Never throw
+async function someOperation(): Promise<Data> {
+  throw new Error('Something went wrong');
+}
+```
+
+### Error Context Required
+
+```typescript
+// ✅ CORRECT - Always build context
+const context = ErrorContextBuilder.fromService('AuthService', 'signUp', undefined, undefined, {
+  operation: 'create-user',
+});
+
+// ✅ CORRECT - Always include userId/projectId if available
+const context = ErrorContextBuilder.fromRepository(
+  'UserRepository',
+  'updateProfile',
+  userId,
+  undefined,
+  { field: 'displayName' },
+);
+
+// ❌ WRONG - Missing context
+return err(new AppError('Failed'));
+```
+
+### Error Mapping
+
+```typescript
+// ✅ CORRECT - Map all external errors
+catch (error) {
+  return err(ErrorMapper.fromFirestore(error, context));
+}
+
+// ✅ CORRECT - Map Zod errors
+const result = schema.safeParse(data);
+if (!result.success) {
+  return err(ErrorMapper.fromZod(result.error, context));
+}
+
+// ❌ WRONG - Return raw errors
+catch (error) {
+  return err(error as AppError);
+}
+```
+
+### Aggregated Errors (Multi-Operation)
+
+```typescript
+// ✅ CORRECT - For operations with multiple failures
+const failures = results.filter(r => !r.success);
+if (failures.length > 0) {
+  return err(
+    ErrorMapper.createAggregatedError(
+      ErrorCode.DB_WRITE_ERROR,
+      `Failed to initialize ${failures.length} subcollection(s)`,
+      'Some features may not be available.',
+      context,
+      failures.map(f => ({ operation: f.name, error: f.error })),
+      successCount,
+    ),
+  );
+}
+```

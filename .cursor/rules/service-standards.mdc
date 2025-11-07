@@ -1,0 +1,61 @@
+---
+alwaysApply: true
+---
+
+### Service Layer Template
+
+```typescript
+// ✅ CORRECT - Service structure
+export class FeatureService {
+  constructor(private repository: IFeatureRepository) {}
+
+  async getData(id: string): Promise<Result<Data, AppError>> {
+    const context = ErrorContextBuilder.fromService('FeatureService', 'getData', undefined, id);
+
+    // Business logic validation here (if needed)
+
+    // Delegate to repository
+    return await this.repository.getById(id);
+  }
+
+  async createData(payload: CreateInput): Promise<Result<Data, AppError>> {
+    const context = ErrorContextBuilder.fromService('FeatureService', 'createData');
+
+    // Validate at service layer
+    const validationResult = validateWithSchema(createSchema, payload, context);
+    if (!validationResult.success) {
+      return err(validationResult.error);
+    }
+
+    // Delegate to repository
+    return await this.repository.create(validationResult.value);
+  }
+}
+
+// ❌ WRONG - Service doing repository work
+export class FeatureService {
+  async createData(payload: CreateInput): Promise<Result<Data, AppError>> {
+    // Don't directly access Firestore in service
+    const docRef = await addDoc(collection(firestore, 'data'), payload);
+    return ok(payload);
+  }
+}
+```
+
+### Service Factory Pattern
+
+```typescript
+// ✅ CORRECT - Export from ServiceFactory
+import { ServiceFactory } from '@/services/ServiceFactory';
+
+const result = await ServiceFactory.auth.signUp(input);
+
+// OR use convenience exports
+import { AuthService } from '@/services/ServiceFactory';
+
+const result = await AuthService.signUp(input);
+
+// ❌ WRONG - Direct instantiation
+import { AuthService } from '@/services/auth-service';
+const authService = new AuthService(repo, userRepo);
+```

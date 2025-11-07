@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+
+**Files:**
+
+- Components: `PascalCase.tsx` (e.g., `SignUpForm.tsx`)
+- Hooks: `use-kebab-case.ts` (e.g., `use-sign-up.ts`)
+- Services: `kebab-case-service.ts` (e.g., `auth-service.ts`)
+- Repositories: `kebab-case-repository.ts` (e.g., `firestore-auth-repository.ts`)
+- Interfaces: `i-kebab-case.ts` (e.g., `i-auth-repository.ts`)
+- Schemas: `kebab-case.schema.ts` (e.g., `user.schema.ts`)
+- Utils: `kebab-case.ts` (e.g., `error-mapper.ts`)
+
+**Code:**
+
+- Interfaces: `IPascalCase` (e.g., `IAuthRepository`)
+- Types: `PascalCase` (e.g., `User`, `SignUpInput`)
+- Enums: `PascalCase` with `UPPER_CASE` values
+- Functions: `camelCase`
+- Constants: `UPPER_SNAKE_CASE`
+- React Components: `PascalCase`

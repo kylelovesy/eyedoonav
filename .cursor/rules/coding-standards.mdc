@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+
+❌ **Don't**: Mix business logic in repositories
+
+✅ **Do**: Keep repositories focused on data access
+
+❌ **Don't**: Throw errors in async functions
+
+✅ **Do**: Always return `Result<T, AppError>`
+
+❌ **Don't**: Use `any` types
+
+✅ **Do**: Use proper TypeScript types and Zod schemas
+
+❌ **Don't**: Forget to cleanup subscriptions
+
+✅ **Do**: Always return unsubscribe function and cleanup in `useEffect`
+
+❌ **Don't**: Use localStorage/sessionStorage in artifacts/web
+
+✅ **Do**: Use React state or in-memory storage
+
+❌ **Don't**: Skip sanitization
+
+✅ **Do**: Always sanitize in repository before validation
+
+❌ **Don't**: Create duplicate error handling logic
+
+✅ **Do**: Use centralized error handlers and mappers
+
+❌ **Don't**: Forget context in error handling
+
+✅ **Do**: Always use `ErrorContextBuilder` with userId/projectId
+
+❌ **Don't**: Use separate loading/error states
+
+✅ **Do**: Use `LoadingState<T>` type
+
+❌ **Don't**: Skip rate limiting on auth operations
+
+✅ **Do**: Use pre-configured rate limiters

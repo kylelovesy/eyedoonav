@@ -1,0 +1,75 @@
+---
+alwaysApply: true
+---
+
+## Testing Standards
+
+### Test File Organization
+
+```
+tests/
+├── utils/
+│   ├── sanitization-helpers.test.ts
+│   ├── validation-helpers.test.ts
+│   └── error-mapper.test.ts
+├── services/
+│   ├── auth-service.test.ts
+│   └── user-service.test.ts
+├── repositories/
+│   └── firestore-auth-repository.test.ts
+└── hooks/
+    ├── use-sign-up.test.ts
+    └── use-user-profile.test.ts
+```
+
+### Test Template
+
+```typescript
+// ✅ CORRECT - Test structure
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+
+describe('FeatureService', () => {
+  let service: FeatureService;
+  let mockRepository: jest.Mocked<IFeatureRepository>;
+
+  beforeEach(() => {
+    mockRepository = {
+      getData: jest.fn(),
+      create: jest.fn(),
+    } as any;
+
+    service = new FeatureService(mockRepository);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getData', () => {
+    it('should return data on success', async () => {
+      const mockData = { id: '1', name: 'Test' };
+      mockRepository.getData.mockResolvedValue(ok(mockData));
+
+      const result = await service.getData('1');
+
+      expect(result.success).toBe(true);
+      expect(result.value).toEqual(mockData);
+    });
+
+    it('should return error on failure', async () => {
+      const mockError = ErrorMapper.createGenericError(
+        ErrorCode.DB_NOT_FOUND,
+        'Not found',
+        'Data not found',
+        'test',
+      );
+      mockRepository.getData.mockResolvedValue(err(mockError));
+
+      const result = await service.getData('1');
+
+      expect(result.success).toBe(false);
+      expect(result.error.code).toBe(ErrorCode.DB_NOT_FOUND);
+    });
+  });
+});
+```

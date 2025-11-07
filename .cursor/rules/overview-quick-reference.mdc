@@ -1,0 +1,169 @@
+---
+alwaysApply: true
+---
+
+## Environment-Specific Code
+
+### Development vs Production
+
+```typescript
+// ✅ CORRECT - Use __DEV__ flag
+if (__DEV__) {
+  console.log('[DEBUG]', data);
+}
+
+// ✅ CORRECT - Production-only features
+if (!__DEV__) {
+  // Initialize Sentry
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+  });
+}
+
+// ❌ WRONG - Always log
+console.log(data); // Logs in production!
+```
+
+---
+
+## Common Patterns Quick Reference
+
+### Creating a New Feature Module
+
+1. **Define schemas** (`domain/feature/feature.schema.ts`)
+2. **Create repository interface** (`repositories/i-feature-repository.ts`)
+3. **Implement repository** (`repositories/firestore/firestore-feature-repository.ts`)
+4. **Create service** (`services/feature-service.ts`)
+5. **Add to ServiceFactory** (`services/ServiceFactory.ts`)
+6. **Create hooks** (`hooks/use-feature.ts`)
+7. **Create forms** (`components/feature/FeatureForm.tsx`)
+8. **Create screens** (`app/(app)/feature/index.tsx`)
+9. **Add tests** (`tests/`)
+
+### Common Gotchas
+
+❌ **Don't**: Mix business logic in repositories
+
+✅ **Do**: Keep repositories focused on data access
+
+---
+
+## Git Commit Standards
+
+### Commit Message Format
+
+```bash
+# ✅ CORRECT
+feat(auth): add rate limiting to sign-in
+fix(user): sanitize email in update profile
+refactor(timeline): extract time validation to helper
+docs(readme): update setup instructions
+test(auth): add tests for password reset flow
+
+# ❌ WRONG
+fixed bug
+update
+WIP
+asdf
+```
+
+### Commit Categories
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `refactor`: Code refactoring (no functional change)
+- `docs`: Documentation changes
+- `test`: Adding or updating tests
+- `style`: Code style changes (formatting, etc.)
+- `perf`: Performance improvements
+- `chore`: Build process, dependencies, etc.
+
+---
+
+## Code Review Checklist
+
+Before submitting code, verify:
+
+- [ ] All async functions return `Result<T, AppError>`
+- [ ] All operations have error context (ErrorContextBuilder)
+- [ ] All inputs are sanitized at repository level
+- [ ] All inputs are validated at service level
+- [ ] All subscriptions return cleanup functions
+- [ ] All hooks cleanup on unmount (useEffect return)
+- [ ] All forms have client-side validation
+- [ ] All auth operations have rate limiting
+- [ ] No `any` types used
+- [ ] No `console.log` in production code (use `if (__DEV__)`)
+- [ ] No localStorage/sessionStorage in web code
+- [ ] All imports use @ alias
+- [ ] All public functions have JSDoc comments
+- [ ] All tests pass
+- [ ] No TypeScript errors
+- [ ] No ESLint warnings
+
+---
+
+## Quick Decision Matrix
+
+### Should I...?
+
+| Question                           | Answer                                 |
+| ---------------------------------- | -------------------------------------- |
+| Use `any` type?                    | ❌ No - use proper types               |
+| Throw errors in services/repos?    | ❌ No - return Result                  |
+| Skip error context?                | ❌ No - always use ErrorContextBuilder |
+| Skip sanitization?                 | ❌ No - always sanitize in repository  |
+| Use localStorage in web?           | ❌ No - use React state                |
+| Use separate loading/error states? | ❌ No - use LoadingState type          |
+| Subscribe without cleanup?         | ❌ No - always return unsubscribe      |
+| Skip rate limiting on auth?        | ❌ No - use rate limiters              |
+| Mix business logic in repository?  | ❌ No - keep in service                |
+| Use inline styles?                 | ❌ No - use StyleSheet.create          |
+| Hardcode strings?                  | ❌ No - use constants/enums            |
+| Skip validation at service?        | ❌ No - always validate                |
+| Use optimistic updates for auth?   | ❌ No - not applicable                 |
+| Create new error handler?          | ❌ No - use AppErrorHandler            |
+| Instantiate services directly?     | ❌ No - use ServiceFactory             |
+
+---
+
+## AI Generation Prompt Template
+
+When asking AI to generate code, include:
+
+```
+Generate [feature] following Eye-Doo project standards:
+
+1. Use Result<T, AppError> pattern for all async operations
+2. Add error context with ErrorContextBuilder
+3. Sanitize inputs at repository level using utils
+4. Validate inputs at service level with Zod schemas
+5. Use LoadingState<T> for state management
+6. Follow ports & adapters architecture
+7. Add JSDoc comments for public APIs
+8. Include TypeScript types (no 'any')
+9. Follow naming conventions (kebab-case files, PascalCase components)
+10. Add cleanup for any subscriptions
+
+Context:
+- Layer: [Service/Repository/Hook/Component]
+- Dependencies: [List related modules]
+- Data flow: [Describe expected flow]
+```
+
+---
+
+## Summary
+
+This document defines the **complete standards** for the Eye-Doo project. All code generated from this point forward MUST adhere to these patterns. These standards ensure:
+
+✅ **Consistency** across all modules
+✅ **Type safety** with TypeScript and Zod
+✅ **Error handling** with Result pattern
+✅ **Clean architecture** with ports & adapters
+✅ **Maintainability** with clear patterns
+✅ **Performance** with proper state management
+✅ **Security** with validation, sanitization, and rate limiting
+✅ **Reliability** with proper cleanup and error recovery
+
+**Remember**: When in doubt, refer to the Auth and User modules as reference implementations. They follow all these patterns correctly.

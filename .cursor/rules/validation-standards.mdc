@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+
+### Always Validate at Service Layer
+
+```typescript
+// ✅ CORRECT - Service validates before repository
+async createUser(payload: UserCreate): Promise<Result<User, AppError>> {
+  const context = ErrorContextBuilder.fromService('UserService', 'createUser');
+
+  // Validate at service layer
+  const validationResult = validateWithSchema(userCreateSchema, payload, context);
+  if (!validationResult.success) {
+    return err(validationResult.error);
+  }
+
+  return await this.repository.create(validationResult.value);
+}
+
+// ❌ WRONG - No validation
+async createUser(payload: UserCreate): Promise<Result<User, AppError>> {
+  return await this.repository.create(payload);
+}
+```
+
+### Use Zod for All Schemas
+
+```typescript
+// ✅ CORRECT
+export const userSchema = z.object({
+  name: personInfoSchema,
+  email: z.string().email().toLowerCase(),
+  displayName: z.string().min(1).max(100).trim(),
+});
+
+// ❌ WRONG - TypeScript types without runtime validation
+export interface User {
+  name: PersonInfo;
+  email: string;
+  displayName: string;
+}
+```

@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+---
+
+### Always Sanitize at Repository Layer
+
+```typescript
+// ✅ CORRECT - Explicit sanitization in repository
+private sanitizeUserCreate(payload: UserCreate): UserCreate {
+  return {
+    ...payload,
+    displayName: sanitizeString(payload.displayName),
+    email: sanitizeEmail(payload.email)!,
+    phone: sanitizePhone(payload.phone) || undefined,
+    name: sanitizePersonInfo(payload.name),
+  };
+}
+
+async create(payload: UserCreate): Promise<Result<User, AppError>> {
+  // Sanitize first
+  const sanitized = this.sanitizeUserCreate(payload);
+
+  // Then validate
+  const validationResult = validateWithSchema(schema, sanitized, context);
+
+  // Then save
+}
+
+// ❌ WRONG - Rely only on Zod's implicit sanitization
+async create(payload: UserCreate): Promise<Result<User, AppError>> {
+  // No sanitization - just validate and save
+  const validationResult = validateWithSchema(schema, payload, context);
+}
+```
+
+### Use Centralized Sanitization Utils
+
+```typescript
+// ✅ CORRECT - Import from utils
+import {
+  sanitizeString,
+  sanitizeEmail,
+  sanitizePhone,
+  sanitizePersonInfo,
+} from '@/utils/sanitization-helpers';
+
+const sanitizedEmail = sanitizeEmail(rawEmail);
+
+// ❌ WRONG - Custom sanitization everywhere
+const sanitizedEmail = rawEmail.trim().toLowerCase();
+```
